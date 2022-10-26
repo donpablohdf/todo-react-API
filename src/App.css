@@ -1,0 +1,21 @@
+.boton{
+    text-decoration: none;
+    display:inline-block;
+    width:10%;
+    padding:3px;
+
+ 
+    text-decoration: none;
+    color:black;
+    transition: all 0.5s;
+    text-align: center;
+    font-size: 12px;
+    
+}
+
+.boton:hover{
+
+    color:brown;
+}
+
+
