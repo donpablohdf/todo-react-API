@@ -1,6 +1,6 @@
 import React, { useState} from 'react';
-import {useForm} from 'react-hook-form'
-import { v4 as uuidv4 } from 'uuid';
+import {useForm} from 'react-hook-form' //hook que permite el manejo de formularios
+import { v4 as uuidv4 } from 'uuid'; //hook que permite crear ids unicos
 import "./App.css"
 
 console.clear();
@@ -9,14 +9,14 @@ function App() {
   const { register, reset, handleSubmit, formState: { errors } } = useForm();
   const [datos, setDatos]=useState([])
 
-  const onSubmit = (data, e) =>{
-    e.target.reset()
-    e.preventDefault();
+  const onSubmit = (data, e) =>{  // al cambiar el input o enviar el formulario añade el task al array de objetos
+    e.target.reset() //reseteamos el input
+    e.preventDefault(); //es necesario para que el formulario no haga una petición GET (no en éste caso, pero es mejor ponerlo)
     data.id = uuidv4() //creo una id única con uuid
-    setDatos([...datos, data]) //añado los datos al array   
+    setDatos([...datos, data]) //añado los datos al array de objetos  
 }
 
-//borrar el todo
+//borrar el task del array de objetos
   const deleteTodo = todo =>{
     setDatos(datos.filter(item => item.id !== todo.id))
   }
@@ -26,7 +26,7 @@ function App() {
       
           <div className='container p-0 m-0 d-flex flex-column bg-light shadow'>
 {/* TITULO *********************************************************************************/}
-<header className='d-flex justify-content-center'><h1 className='fw-lighter'>todos</h1></header>
+            <header className='d-flex justify-content-center'><h1 className='fw-lighter'>todos</h1></header>
 {/* FORMULARIO *********************************************************************************/}
               <div className='d-flex justify-content-center'>
                   <form onSubmit={handleSubmit(onSubmit)} >
@@ -46,6 +46,7 @@ function App() {
 {/* DATOS****************************************/}
               <div className="d-flex justify-content-center flex-column mb-3">
                 {
+                  // recorro el array de datos para mostrarlo cuando se modifica
                     datos.map((item) =>
                       <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-2" key={item.id}  >
                         <h5 className='p-0 m-0 fw-lighter'>{item.newTodo}</h5>
