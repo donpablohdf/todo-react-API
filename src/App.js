@@ -3,7 +3,6 @@ import {useForm} from 'react-hook-form' //hook que permite el manejo de formular
 import { v4 as uuidv4 } from 'uuid'; //hook que permite crear ids unicos
 import "./App.css"
 
-console.clear();
 function App() {
 
   const { register, reset, handleSubmit, formState: { errors } } = useForm();
@@ -14,7 +13,7 @@ function App() {
     e.preventDefault(); //es necesario para que el formulario no haga una petición GET (no en éste caso, pero es mejor ponerlo)
     data.id = uuidv4() //creo una id única con uuid
     setDatos([...datos, data]) //añado los datos al array de objetos  
-}
+  }
 
 //borrar el task del array de objetos
   const deleteTodo = todo =>{
