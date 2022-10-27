@@ -1,26 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {useForm} from 'react-hook-form' // permite el manejo de formularios https://www.npmjs.com/package/react-hook-form
 import { v4 as uuidv4 } from 'uuid'; // permite crear ids unicos https://www.npmjs.com/package/uuidv4
 import "./App.css"
+console.clear()
+
+
+const urlAPI='https://assets.breatheco.de/apis/fake/todos/user/alesanchezr'
 
 function App() {
-
+  // eslint-disable-next-line
   const { register, reset, handleSubmit, watch, formState: { errors } } = useForm(); // declaracion para react-hook-form
-  const [TODO, setDatos]=useState([]) //creo un array para meter objetos con id creado por uuid y newTask creado por el input del formulario
+  const [TAREAS, setTAREAS]=useState([]) //creo un array para meter objetos con id creado por uuid y label creado por el input del formulario
 
-  const onSubmit =  (data, e) =>{  // al cambiar el input o enviar el formulario añade el task al array de objetos TODO
+  const [ANTERIOR, setANTERIOR]=useState([]) //creo un array para meter objetos con id creado por uuid y label creado por el input del formulario
+
+  // recupero datos de la API
+  useEffect( () => {
+    const options = {method: 'GET'};
+    async function recupera () {
+          
+          await fetch(urlAPI, options)
+          .then(response => response.json())
+          .then(response =>{ setTAREAS(response); setANTERIOR(response)})
+          .catch(err => console.error(err));
+    }  
+          
+    recupera()
+  }, [TAREAS.id, setTAREAS]);
     
-    e.preventDefault(); //es necesario para que el formulario no haga peticiones GET/POST(no interviene en éste caso, pero es mejor ponerlo)
-    data.id = uuidv4() //creo una id única con uuid para meter en el array de objetos TODO
-    setDatos([...TODO, data]) //añado los datos al array de objetos  TODO
-    reset({newTask: ''}) //reseteamos el valor del input con react-hook-form
-    // console.log(data);
-    // console.log(watch("newTask"));
+//actualizo datos en la API
+const actualizaAPI= ()=>{
+
+  const convierteAJSON = JSON.stringify(TAREAS)
+  const options = { method: "PUT", body: convierteAJSON, headers: {"Content-Type": "application/json"}}
+
+  async function actualiza () {
+      await fetch(urlAPI, options)
+      .then(response => {
+        console.log(response.ok); // Será true (verdad) si la respuesta es exitosa.
+        console.log(response.status); // el código de estado = 200 o código = 400 etc.
+    })
+      .catch(err => console.error(err));
+  }  
+    
+  actualiza()
+}
+
+// al cambiar el input o enviar el formulario añade la tarea al array de objetos TAREAS
+  const addTarea =  async (data, e) =>{  
+    
+    e.preventDefault() //es necesario para que el formulario no haga peticiones GET/POST(no interviene en éste caso, pero es mejor ponerlo)
+    data.id = uuidv4() //creo una id única con uuid para meter en el array de objetos TAREAS
+    data.done=false 
+    setTAREAS([...TAREAS, data]) //añado los datos al array de objetos  TAREAS
+    reset({label: ''}) //reseteamos el valor del input con react-hook-form
+    actualizaAPI()
+    //console.log(data);
+    // console.log(watch("label"));
   }
 
-  //borrar el task del array de objetos TODO con filter
-  const deleteTodo = todo =>{
-    setDatos(TODO.filter(item => item.id !== todo.id))
+  //borrar la tarea del array de objetos TAREAS con filter
+  const deleteTarea = tarea =>{
+    setTAREAS(TAREAS.filter(elementoTAREAS => elementoTAREAS.id !== tarea.id)) // actualiza el array de objetos TAREAS con solo los elementos que son distintos a tarea.id usando filter
+    actualizaAPI() //actualiza la API
+  }
+
+  //pone a true el done de tarea
+  const cambiaEstadoTarea = tarea =>{
+    
+    for(var n =0; n<TAREAS.length; n++) 
+    {
+      if(!tarea.done && TAREAS[n].id === tarea.id){
+        tarea.done=true
+      } 
+      if(tarea.done && TAREAS[n].id === tarea.id){
+        tarea.done=false
+      }     
+    }
+    actualizaAPI() //actualiza la API
   }
 
   return (
@@ -31,35 +88,40 @@ function App() {
             <header className='d-flex justify-content-center'><h1 className='fw-lighter'>todos</h1></header>
 {/* FORMULARIO *************************************************************************************************************************************/}
               <section className='d-flex justify-content-center'>
-                  <form onSubmit={handleSubmit(onSubmit)} >
+                  <form onSubmit={handleSubmit(addTarea)} >
                     <div className="container p-2 m-0 d-flex flex-row">
                       <input 
                         autoComplete="off" //no permitir autocompletado del input                      
                         type="text" 
                         className='form-control my-2' 
-                        placeholder="Nuevo todo" 
-                        {...register("newTask", { required: true })} //crear el name del input y requerido react-hook-form
+                        placeholder="Nueva tarea" 
+                        {...register("label", { required: true })} //crear el name del input y requerido react-hook-form
                       />
                       <button className='btn boton ms-3 d-block' type="submit" > enviar</button>
                     </div>
                     {/* control de errores react-hook-form */}
-                    {errors.newTask && <span className="text-danger text-small d-block m-2 fw-lighter">El campo no puede estar vacío</span>}
+                    {errors.label && <span className="text-danger text-small d-block m-2 fw-lighter">El campo no puede estar vacío</span>}
                   </form>
               </section>
-{/* DATOS DEL ARRAY TODO*****************************************************************************************************************************/}
+{/* DATOS DEL ARRAY TAREAS*****************************************************************************************************************************/}
               <section className="d-flex justify-content-center flex-column mb-3">
                 {
-                  // recorro el array de datos TODO para mostrarlo cuando se modifica
-                    TODO.map((item) =>
-                      <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-2" key={item.id}  >
-                        <h5 className='p-0 m-0 fw-lighter'>{item.newTask}</h5>
-                        <button type="button" className="btn-close" aria-label="Close" onClick={()=>deleteTodo(item)}></button>
+                  // recorro el array de datos TAREAS para mostrarlo cuando se modifica
+                    TAREAS.map((tarea) =>
+                      <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-2" key={tarea.id}  >
+                        <h5 className='p-0 m-0 fw-lighter'>Tarea:  {tarea.label}</h5>
+                        <div>
+                        {/* convierte la tarea a true */}
+                        <button type="button" className="btn-close " aria-label="Close" onClick={()=>cambiaEstadoTarea(tarea)}></button>
+                        {/* borra la tarea */}
+                        
+                        </div>
                       </div>
                     )
                 }
               </section>
-{/* ITEMS LEFT con length del array de objetos TODO ******************************/}
-              <footer className='container ps-4'><p className='fw-lighter'>{ TODO.length } items left</p></footer>
+{/* ITEMS LEFT con length del array de objetos TAREAS ******************************/}
+              <footer className='container ps-4'><p className='fw-lighter'>{ TAREAS.length } items left</p></footer>
           </div>
     </div>
   );
