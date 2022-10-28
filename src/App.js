@@ -12,11 +12,12 @@ function App() {
   const { register, reset, handleSubmit, watch, formState: { errors } } = useForm(); // declaracion para react-hook-form
   const [TAREAS, setTAREAS] = useState([]) //creo un array para meter objetos con id creado por uuid y label creado por el input del formulario
 
+  // ***********************************LLAMADAS A APIS CON FETCH********************************************************************
+
   // recupero datos de la API
   useEffect(() => {
-    const options = { method: 'GET' };
+    const options = { method: 'GET', headers: { "Content-type": "application/json;charset=UTF-8" } };
     async function recupera() {
-
       await fetch(urlAPI, options)
         .then(response => response.json())
         .then(response => { setTAREAS(response) })
@@ -29,10 +30,12 @@ function App() {
   //actualizo datos en la API
   const actualizaAPI = () => {
     //console.clear()
+    
     const convierteAJSON = JSON.stringify(TAREAS)
     const options = { method: "PUT", body: convierteAJSON, headers: { "Content-Type": "application/json" } }
     console.log(convierteAJSON)
     async function actualiza() {
+      
       await fetch(urlAPI, options)
         .then(response => {
           console.log(response.ok); // Será true (verdad) si la respuesta es exitosa.
@@ -43,6 +46,8 @@ function App() {
 
     actualiza()
   }
+
+  //********************************FUNCIONES TRANSFORMADORAS DEL ARRAY DE OBJETOS: TAREAS*********************************************
 
   // al cambiar el input o enviar el formulario añade la tarea al array de objetos TAREAS
   const addTarea = async (data, e) => {
@@ -66,7 +71,7 @@ function App() {
 
   //pone a true o false el done de tarea según el id
   const cambiaEstadoTarea = tarea => {
-    console.clear()
+    setTAREAS(TAREAS)
     for (var n = 0; n < TAREAS.length; n++) {
       if (TAREAS[n].id === tarea.id) { //si la tarea que pasamos coincide con el id de la tarea en el API cambiamos el estado
         tarea.done ? tarea.done = false : tarea.done = true
@@ -74,21 +79,46 @@ function App() {
     }
     actualizaAPI() //actualiza la API
   }
+
   //borrar todas las tareas
   const borrarTAREAS = () => {
-    setTAREAS([]) //actualiza la API
+    setTAREAS([])
     setTAREAS([{ id: "0", label: "0", done: true }])
     console.log(TAREAS)
-    setTimeout(actualizaAPI,5000) //actualiza la API
+    setTimeout(actualizaAPI, 5000) //actualiza la API
   }
 
+  // FUNCIONES DE RENDERIZADO CONDICIONAL ***********************************************************************************************
+
+  // cuando tarea.id true o false
+
+  const tareaID = (tarea) => {
+
+    if (tarea.done) {
+      return (
+        <>
+          <button type="button" className="btn btn-outline-success " aria-label="Close" onClick={() => cambiaEstadoTarea(tarea)}>Hecha</button>
+          <button type="button" className="btn btn-outline-danger ms-2" aria-label="Close" onClick={() => deleteTarea(tarea)}>Borrar</button>
+        </>
+      )
+    }
+    else {
+      
+      return (
+        <button type="button" className="btn btn-outline-success " aria-label="Close" onClick={() => cambiaEstadoTarea(tarea)}>Pendiente</button>
+      )
+    }
+    
+  }
+
+//COMPONENTE ****************************************************************************************************************************
   return (
     <div className="container-md p-5">
 
       <div className='container p-0 m-0 d-flex flex-column bg-light shadow'>
-        {/* TITULO *****************************************************************************************************************************************/}
+        {/* TITULO *********************************************************************************************************************/}
         <header className='d-flex justify-content-center'><h1 className='fw-lighter'>todos</h1></header>
-        {/* FORMULARIO *************************************************************************************************************************************/}
+        {/* FORMULARIO *****************************************************************************************************************/}
         <section className='d-flex justify-content-center'>
           <form onSubmit={handleSubmit(addTarea)} >
             <div className="container p-2 m-0 d-flex flex-row">
@@ -97,7 +127,7 @@ function App() {
                 type="text"
                 className='form-control my-2'
                 placeholder="Nueva tarea"
-                {...register("label", { required: true })} //crear el name del input y requerido react-hook-form
+                {...register("label", { required: true })} //crear el name del input y es requerido react-hook-form
               />
               <button className='btn boton ms-3 d-block' type="submit" > enviar</button>
 
@@ -107,22 +137,18 @@ function App() {
           </form>
 
         </section>
+        {/* BORRAR TODAS LAS TAREAS ****************************************************************************************************/}
         <div className="container d-flex justify-content-center">
           <button type="button" className="btn btn-danger" onClick={() => borrarTAREAS()}> borrar todo</button>
         </div>
-        {/* DATOS DEL ARRAY TAREAS*****************************************************************************************************************************/}
+        {/* DATOS DEL ARRAY TAREAS******************************************************************************************************/}
         <section className="d-flex justify-content-center flex-column mb-3">
           {
             // recorro el array de datos TAREAS para mostrarlo cuando se modifica
             TAREAS.map((tarea) =>
               <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-2" key={tarea.id}  >
                 <h5 className='p-0 m-0 fw-lighter'>Tarea:  {tarea.label}</h5>
-                <div>
-                  {/* convierte la tarea a true */}
-                  <button type="button" className="btn-close " aria-label="Close" onClick={() => cambiaEstadoTarea(tarea)}></button>
-                  {/* borra la tarea */}
-
-                </div>
+                <div>{tareaID(tarea)}</div>
               </div>
             )
           }
