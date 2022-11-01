@@ -148,8 +148,6 @@ function App() {
       <>
         {/* 3.2.1 COMPONENTE - BORRAR TODAS LAS TAREAS ******************/}
         <div className="d-flex justify-content-center my-3">
-
-        
           <button type="button" className="btn btn-danger text-nowrap" onClick={() => btnBorraTODAS()}>Borrar todas las tareas</button>
         </div>
 
