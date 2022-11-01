@@ -7,85 +7,107 @@ console.clear()
 
 const urlAPI = 'https://assets.breatheco.de/apis/fake/todos/user/alesanchezr'
 
-function App() {
-  // eslint-disable-next-line
-  const { register, reset, handleSubmit, watch, formState: { errors } } = useForm(); // declaracion para react-hook-form
-  const [TAREAS, setTAREAS] = useState([]) //creo un array para meter objetos con id creado por uuid y label creado por el input del formulario
+let cabeceraAPI = new Headers();
+cabeceraAPI.append("Content-Type", "application/json");
 
-  // ***********************************LLAMADAS A APIS CON FETCH********************************************************************
+//const urlAPI = 'http://localhost:7000/tareas'
+
+let transformacionTAREAS // variable para las funciones addTareaBBDD, deleteTareaBBDD y borraTODAS
+let opcionesGETbbdd = { method: 'GET', headers: cabeceraAPI, redirect: 'follow' }
+
+let errorBBDD="La base de datos está vacía"
+
+let nuevasTareas
+let hackBBDDaCero= [{ "label": "BORRADOS", "id": true, "done": true }] //es necesaria esta entrada fake ya que la API no permite dejar el array de objetos a cero
+
+function App() {
+  // eslint-disable-next-line 
+  const { register, reset, handleSubmit, watch, formState: { errors } } = useForm(); // declaracion para react-hook-form
+  const [TAREAS, setTAREAS] = useState([]) //creo el array de objetos TAREAS para meter tareas con id creado por uuid, done: false y label creado por el input del formulario
+  const [cambios, setCambios] = useState(false) //control de cambios al actualizar en actualizaBBDD()
+  const [estadoID, setEstadoID] = useState("")
+  const [errores, setErrores] = useState("")
+  // *********************************** 1. LLAMADAS A APIS CON FETCH********************************************************************
+
 
   // recupero datos de la API
   useEffect(() => {
-    const options = { method: 'GET', headers: { "Content-type": "application/json;charset=UTF-8" } };
-    async function recupera() {
-      await fetch(urlAPI, options)
+    fetch(urlAPI, opcionesGETbbdd)
         .then(response => response.json())
         .then(response => { setTAREAS(response) })
         .catch(err => console.error(err));
-    }
-
-    recupera()
-  }, [TAREAS.id, setTAREAS]);
+        return () => { setCambios(false)} 
+  
+  }, [cambios]);
 
   //actualizo datos en la API
-  const actualizaAPI = () => {
-    //console.clear()
+  const actualizaBBDD = (datosParaActualizarBBDD) => {
     
-    const convierteAJSON = JSON.stringify(TAREAS)
-    const options = { method: "PUT", body: convierteAJSON, headers: { "Content-Type": "application/json" } }
-    console.log(convierteAJSON)
-    async function actualiza() {
-      
-      await fetch(urlAPI, options)
-        .then(response => {
-          console.log(response.ok); // Será true (verdad) si la respuesta es exitosa.
-          console.log(response.status); // el código de estado = 200 o código = 400 etc.
-        })
-        .catch(err => console.error(err));
+    setTAREAS(datosParaActualizarBBDD)
+    // console.log(datosParaActualizarBBDD)
+    // console.log(TAREAS)
+    if(datosParaActualizarBBDD.length ===1){console.log("hola")}
+    nuevasTareas = JSON.stringify(datosParaActualizarBBDD)
+    let opcionesLlamadaAPI = { method: 'PUT', headers: cabeceraAPI, body: nuevasTareas, redirect: 'follow' }
+    fetch(urlAPI, opcionesLlamadaAPI)
+      .then(response => response.text())
+      .then(result => setCambios(!cambios)) //control de cambios al actualizar en actualizaBBDD()
+      .catch(error => console.log('error', error))
+
+  }
+
+ //********************************2. FUNCIONES TRANSFORMADORAS DE LA BBDD*********************************************
+
+  // 2.1 al cambiar el input o enviar el formulario añade la tarea a la BBDD
+  const addTareaBBDD = async (data, e) => {
+    let anterior = TAREAS
+    let limpio
+    let transicion
+    e.preventDefault() //es necesario para que el formulario no haga peticiones GET/POST(no interviene en éste caso, pero es mejor ponerlo)
+    
+    data.id = uuidv4() //creo una id única con uuid para crear la nueva tarea en la BBDD
+    data.done = false //pongo la key done en false para que la tarea quede pendiente
+    // para poner la tarea fake la primera
+    if(anterior.length === 1){ 
+      transformacionTAREAS = hackBBDDaCero.concat(data)
+    } else {
+      limpio= anterior.filter(elementoTAREAS => elementoTAREAS.id !== true) //dejamos el array sin el elemento hackBBDDaCero
+      console.log(limpio)
+      transicion = hackBBDDaCero.concat(data) //concatenamos con la variable de hackBBDDaCero
+      transformacionTAREAS =  transicion.concat(limpio) //concatenamos la con el 
     }
 
-    actualiza()
+    reset({ label: '' })
+    console.log(transformacionTAREAS)
+    actualizaBBDD(transformacionTAREAS)//actualiza la BBDD
+
   }
 
-  //********************************FUNCIONES TRANSFORMADORAS DEL ARRAY DE OBJETOS: TAREAS*********************************************
+  // 2.2 borrar la tarea a la BBDD
+  const deleteTareaBBDD = tarea => {
 
-  // al cambiar el input o enviar el formulario añade la tarea al array de objetos TAREAS
-  const addTarea = async (data, e) => {
-    console.clear()
-    e.preventDefault() //es necesario para que el formulario no haga peticiones GET/POST(no interviene en éste caso, pero es mejor ponerlo)
-    data.id = uuidv4() //creo una id única con uuid para meter en el array de objetos TAREAS
-    data.done = false
-    setTAREAS([...TAREAS, data]) //añado los datos al array de objetos  TAREAS
-    reset({ label: '' }) //reseteamos el valor del input con react-hook-form
-    actualizaAPI()
-    //console.log(data);
-    // console.log(watch("label"));
-  }
-
-  //borrar la tarea del array de objetos TAREAS con filter
-  const deleteTarea = tarea => {
-    console.clear()
-    setTAREAS(TAREAS.filter(elementoTAREAS => elementoTAREAS.id !== tarea.id)) // actualiza el array de objetos TAREAS con solo los elementos que son distintos a tarea.id usando filter
-    actualizaAPI() //actualiza la API
+    transformacionTAREAS= TAREAS.filter(elementoTAREAS => elementoTAREAS.id !== tarea.id) // actualiza el array de objetos TAREAS con solo los elementos que son distintos a tarea.id usando filter
+    actualizaBBDD(transformacionTAREAS) //actualiza la API
   }
 
   //pone a true o false el done de tarea según el id
-  const cambiaEstadoTarea = tarea => {
-    setTAREAS(TAREAS)
-    for (var n = 0; n < TAREAS.length; n++) {
-      if (TAREAS[n].id === tarea.id) { //si la tarea que pasamos coincide con el id de la tarea en el API cambiamos el estado
+  const cambiaTareaPendiente = tarea => {
+    let cogeElID
+    let transformacionTAREAS = TAREAS
+    for (var n = 0; n < transformacionTAREAS.length; n++) {
+      if (transformacionTAREAS[n].id === tarea.id) {
+        cogeElID=n; //si la tarea que pasamos coincide con el id de la tarea en el API cambiamos el estado
         tarea.done ? tarea.done = false : tarea.done = true
       }
     }
-    actualizaAPI() //actualiza la API
+    transformacionTAREAS[cogeElID] = tarea
+    
+    actualizaBBDD(transformacionTAREAS) //actualiza la API
   }
 
   //borrar todas las tareas
   const borrarTAREAS = () => {
-    setTAREAS([])
-    setTAREAS([{ id: "0", label: "0", done: true }])
-    console.log(TAREAS)
-    setTimeout(actualizaAPI, 5000) //actualiza la API
+    actualizaBBDD(hackBBDDaCero) //actualiza la API
   }
 
   // FUNCIONES DE RENDERIZADO CONDICIONAL ***********************************************************************************************
@@ -97,15 +119,15 @@ function App() {
     if (tarea.done) {
       return (
         <>
-          <button type="button" className="btn btn-outline-success " aria-label="Close" onClick={() => cambiaEstadoTarea(tarea)}>Hecha</button>
-          <button type="button" className="btn btn-outline-danger ms-2" aria-label="Close" onClick={() => deleteTarea(tarea)}>Borrar</button>
+          <button type="button" className="btn btn-outline-success " aria-label="Close" onClick={() => cambiaTareaPendiente(tarea)}>Hecha</button>
+          <button type="button" className="btn btn-outline-danger ms-2" aria-label="Close" onClick={() => deleteTareaBBDD(tarea)}>Borrar</button>
         </>
       )
     }
     else {
       
       return (
-        <button type="button" className="btn btn-outline-success " aria-label="Close" onClick={() => cambiaEstadoTarea(tarea)}>Pendiente</button>
+        <button type="button" className="btn btn-outline-success " aria-label="Close" onClick={() => cambiaTareaPendiente(tarea)}>Pendiente</button>
       )
     }
     
@@ -120,7 +142,7 @@ function App() {
         <header className='d-flex justify-content-center'><h1 className='fw-lighter'>todos</h1></header>
         {/* FORMULARIO *****************************************************************************************************************/}
         <section className='d-flex justify-content-center'>
-          <form onSubmit={handleSubmit(addTarea)} >
+          <form onSubmit={handleSubmit(addTareaBBDD)} >
             <div className="container p-2 m-0 d-flex flex-row">
               <input
                 autoComplete="off" //no permitir autocompletado del input                      
@@ -154,7 +176,7 @@ function App() {
           }
         </section>
         {/* ITEMS LEFT con length del array de objetos TAREAS ******************************/}
-        <footer className='container ps-4'><p className='fw-lighter'>{TAREAS.length} items left</p></footer>
+        <footer className='container ps-4'><p className='fw-lighter'>{TAREAS.length-1} items left</p></footer>
       </div>
     </div>
   );
