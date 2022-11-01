@@ -1,53 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form' // permite el manejo de formularios https://www.npmjs.com/package/react-hook-form
 import { v4 as uuidv4 } from 'uuid'; // permite crear ids unicos https://www.npmjs.com/package/uuidv4
-import "./App.css"
+
+// 
+import GridLoader from "react-spinners/GridLoader"; // permite crear el spinner de carga https://www.npmjs.com/package/react-spinners
+
 console.clear()
 
-
-const urlAPI = 'https://assets.breatheco.de/apis/fake/todos/user/alesanchezr'
+// VARIABLES PARA LA API
+const urlAPI = 'https://assets.breatheco.de/apis/fake/todos/user/alesanchezr' //url de la API
 
 let cabeceraAPI = new Headers();
-cabeceraAPI.append("Content-Type", "application/json");
-
-//const urlAPI = 'http://localhost:7000/tareas'
-
-let transformacionTAREAS
-let datosParaActualizarBBDD // variable para las funciones addTareaBBDD, deleteTareaBBDD y borraTODAS
+cabeceraAPI.append("Content-Type", "application/json"); // header para la API
 let opcionesGETbbdd = { method: 'GET', headers: cabeceraAPI, redirect: 'follow' }
+let opcionesPUT = { method: 'PUT', headers: cabeceraAPI, body: [], redirect: 'follow' } 
+//opciones para repuperar datos de la API con GET
+let hackBBDDaCero= [{ "label": "BORRADOS", "id": true, "done": true }] //es necesaria esta entrada fake ya que la API no permite dejar el array de objetos vacío
 
-let errorBBDD="La base de datos está vacía"
+// VARIABLES PARA TRATAR DATOS
+let transformacionTAREAS // array de objetos que sirve para transformar el array TAREAS que muestra los datos en el front-end => setTAREAS(transformacionTAREAS)
+let datosParaActualizarBBDD // array de objetos que sirve para cambiar los datos en la BBDD de la API => actualizaBBDD(datosParaActualizarBBDD)
 
-let nuevasTareas
-let hackBBDDaCero= [{ "label": "BORRADOS", "id": true, "done": true }] //es necesaria esta entrada fake ya que la API no permite dejar el array de objetos a cero
+//VARIABLES PARA spinner de carga
+const spinnerCSS = {
+  display: "block",
+  margin: "10px auto",
+  borderColor: "white",
+};
 
-function App() {
+//**************A P P *********************************************************************A P P**************************************  */
+//***********************************A P P **********************************A P P****************************************************  */
+//**************A P P *********************************************************************A P P**************************************  */
+
+const App = () => {
+
+
   // eslint-disable-next-line 
-  const { register, reset, handleSubmit, watch, formState: { errors } } = useForm(); // declaracion para react-hook-form
-  const [TAREAS, setTAREAS] = useState([]) //es el array para mostrar, quitando el primer elemento
-  const [cambios, setCambios] = useState(false) //control de cambios al actualizar en actualizaBBDD()
-  //const [datosParaBBDD, setdatosParaBBDD] = useState([]) //para poder tratar el array del API sin quitar el primer elemento
-  const [errores, setErrores] = useState("")
+  const { register, reset, handleSubmit, watch, formState: { errors } } = useForm(); // declaracion para control de formulario con react-hook-form
+  const [TAREAS, setTAREAS] = useState([]) //es el array de objetos para mostrar en el FRONT-END (quitando el primer elemento)
+  // const [cambios, setCambios] = useState(false) // (descomentar si) REHACER useEffect cada vez que cambie TAREAS 
+  const [errorBBDD, setErrorBBDD] = useState("Cargando...")
+  const [loading, setLoading] = useState(true);
+
   // *********************************** 1. LLAMADAS A APIS CON FETCH***************************************************
 
- // ***********************1.1 RECUPERO DATOS DE LA API CON GET al inicio (opcional: cada vez que hay cambios)***********************
+  // **1.1 RECUPERO DATOS DE LA API CON GET al inicio (opcional: cada vez que hay cambios)***
   useEffect(() => {
+    setLoading(true)
     fetch(urlAPI, opcionesGETbbdd)
         .then(response => response.json())
-        .then(response => { 
-          setTAREAS(response.filter(elementoTAREAS => elementoTAREAS.id !== true)) //elimino el primer elemento (array de objetos hackBBDDaCero)
-        }) 
-        .catch(err => console.error(err));
+        .then(result => { 
+          setTAREAS(result.filter(elementoTAREAS => elementoTAREAS.id !== true))
+          setLoading(false) // para spinner de carga
+          setErrorBBDD("La base de datos está vacía")
+        }//elimino el primer elemento (array de objetos hackBBDDaCero)
+        ) 
+        .catch(err => setErrorBBDD("Hubo un error en la petición GET : " + err.message ));
 
-        return () => { setCambios(false)} 
+        // return () => { setCambios(false)} // (descomentar si) REHACER useEffect cada vez que cambie TAREAS 
+
   }, [])
-  //}, [cambios]) llamaríamos a la API cada vez que variáramos la variable "cambios" en actualizaBBDD
+  //}, [cambios]) (sustituir linea de arriba si) REHACER useEffect cada vez que cambie TAREAS
 
-  // *******************************1.2. ACTUALIZAR API -> actualizo datos en la API con PUT*******************************
+  // **1.2. ACTUALIZAR API -> actualizo datos en la API con PUT
   const actualizaBBDD = (reciboDatosParaActualizarBBDD) => {
-
-    // transformacionTAREAS= reciboDatosParaActualizarBBDD.filter(elementoTAREAS => elementoTAREAS.id !== true)
-    // setTAREAS(transformacionTAREAS)
+    setLoading(true)
     // console.clear()
     // console.log("resultado que actualiza TAREAS en actualizaBBDD")
     // console.table(transformacionTAREAS)
@@ -55,14 +72,12 @@ function App() {
     // console.table(reciboDatosParaActualizarBBDD)
     // console.log("--------------------")
 
-    nuevasTareas = JSON.stringify(reciboDatosParaActualizarBBDD) // convierto lo que recibo a un string JSON
+    opcionesPUT.body = JSON.stringify(reciboDatosParaActualizarBBDD) // convierto lo que recibo a un string JSON y lo meto en el body del PUT
 
-    let opcionesLlamadaAPI = { method: 'PUT', headers: cabeceraAPI, body: nuevasTareas, redirect: 'follow' }
-
-    fetch(urlAPI, opcionesLlamadaAPI)
+    fetch(urlAPI, opcionesPUT)
       .then(response => response.text())
-  //    .then(result => setCambios(!cambios)) // Descomentar ésta línea si queremos usar el useEffect alizar en actualizaBBDD()
-      .catch(error => console.log('error', error))
+      .then(result =>{setLoading(false)})  // setCambios(!cambios) <= (añadir si) REHACER useEffect cada vez que cambie TAREAS
+      .catch(err => setErrorBBDD("Hubo un error en la petición PUT : " + err.message ));
 
   }
 
@@ -73,21 +88,27 @@ function App() {
 
     transformacionTAREAS = TAREAS
 
-    reset({ label: '' }) //reseteo el input
-    e.preventDefault() //es necesario para que el formulario no haga peticiones GET/POST(no interviene en éste caso, pero es mejor ponerlo)
+    reset({ label: '' }) //reseteo el input del formulario
+    e.preventDefault() //es necesario para que el formulario no haga peticiones GET/POST (no interviene en éste caso, pero es mejor ponerlo)
     
     data.id = uuidv4() //creo una id única con uuid para crear la nueva tarea en la BBDD
     data.done = false //pongo la key done en false para que la tarea quede pendiente
 
     // ******para poner la tarea fake la primera y poner la última añadida, la segunda
-    if(transformacionTAREAS.length === 1){ 
+    if(transformacionTAREAS.length === 0){ // si TAREAS está vacío
 
       datosParaActualizarBBDD = hackBBDDaCero.concat(data)
-    } else {
+  
+    } else { // si no está vacío, concatenamos hackBBDDaCero con los nuevos datos (data) y con los elementos que existían antes (transformacionTAREAS)
 
-      datosParaActualizarBBDD =  hackBBDDaCero.concat(data).concat(transformacionTAREAS) //concatenamos hackBBDDaCero con los nuevos datos (data) y con los elementos que existían antes (transformacionTAREAS)
+      datosParaActualizarBBDD =  hackBBDDaCero.concat(data).concat(transformacionTAREAS) 
     }
     
+    // console.log("resultado de datosParaActualizarBBDD en addTareaBBDD")
+    // console.table(datosParaActualizarBBDD)
+    // console.log("--------------------")
+
+
     // TAREAS - TRANSFORMACIÓN PARA MOSTRAR EN EL FRONT-END
     transformacionTAREAS= datosParaActualizarBBDD.filter(elementoTAREAS => elementoTAREAS.id !== true) //elimino hackBBDDaCero para que no se muestre
     setTAREAS(transformacionTAREAS) //seteo TAREAS sin hackBBDDaCero
@@ -141,17 +162,15 @@ function App() {
     datosParaActualizarBBDD = hackBBDDaCero
 
     // TAREAS - TRANSFORMACIÓN PARA MOSTRAR EN EL FRONT-END
-
-    setTAREAS(datosParaActualizarBBDD) //seteo TAREAS sin hackBBDDaCero
+    setTAREAS([]) //seteo TAREAS sin hackBBDDaCero
 
     actualizaBBDD(datosParaActualizarBBDD) //actualiza la API
   }
 
     // *************** 3. FUNCIONES DE RENDERIZADO CONDICIONAL*******************************
 
-    // 3.1. COMPONENTE => BotoneraHechoPendienteBorrar según si tarea.done es true creamos los botones Realizada y Borrar. 
+    // 3.1. COMPONENTE => BotoneraHechoPendienteBorrar: si tarea.done es true creamos los botones Realizada y Borrar. 
     //                    Si tarea.done es false nostramos el botón Pendiente
-
   const botoneraHechoPendienteBorrar = (tarea) => {
 
     if (tarea.done) { // 3.1.1 si la tarea no está pendiente permite borrarla
@@ -171,39 +190,38 @@ function App() {
     
   }
 
-  // 3.2. COMPONENTE si hay datos en la BBDD  (recordemos la variable estadoID por el hack API)
-  const compHayDatosAPI = () => {  
+  // 3.2. COMPONENTE SiHayDatos hay datos en la BBDD de la API  (recordemos la variable cambios para el fetch, la hackBBDDaCero por el hack API)
+  const siHayDatos = () => {  
 
     return (
       <>
-        {/* 3.2.1 COMPONENTE - BORRAR TODAS LAS TAREAS ******************/}
+        {/* 4.3.1 COMPONENTE - BorrarTODAS que borra TODAS las tareas*/}
         <div className="d-flex justify-content-center my-3">
           <button type="button" className="btn btn-danger text-nowrap" onClick={() => btnBorraTODAS()}>Borrar todas las tareas</button>
         </div>
 
-        {/* 3.2.2 COMPONENTE - DATOS DEL ARRAY TAREAS *********/}
+        {/* 4.3.2 COMPONENTE - DatosTareas DEL ARRAY TAREAS *********/}
         <section className="d-flex justify-content-center flex-column mb-3">
           {
-            // 3.2.2.1 recorro el array de datos TAREAS para mostrarlo cuando se modifica
+            // 4.3.2.1 recorro el array de datos TAREAS para mostrarlo cuando se modifica
             TAREAS.map((tarea) =>
               <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-2" key={tarea.id}  >
-                <h5 className='p-0 m-0 fw-lighter'>Tarea:  {tarea.label}</h5>
-                {/* 3.2.2.1.1 LLAMADA a función condicional para crear componente de los botones Borrar, Pendiente/Hecho */}
+                <h5 className='p-0 m-0 fw-lighter'>Tarea: {tarea.label}</h5>
+                {/* 4.3.2.1.1 LLAMADA a función condicional para crear componente de los botones Borrar, Pendiente/Realizada */}
                 <div>{botoneraHechoPendienteBorrar(tarea)}</div>
               </div>
             )
           }
         </section>
 
-        {/* 3.2.3 ITEMS LEFT con length del array de objetos TAREAS ******************************/}
+        {/* 4.3.3 COMPONENTE - ItemsLeft con length del array de objetos TAREAS ******************************/}
         <footer className='container ps-4'><p className='fw-lighter'>{TAREAS.length} items left</p></footer>
       </>
     )
   }
 
-  // 3.3. COMPONENTE si no hay datos en el API
-  const compSinDatosAPI = () => {
-    
+  // 3.3. COMPONENTE NoHayDatos  no hay datos en la BBDD de la API
+  const noHayDatos = () => {
     return (
       <>
         <div className="d-flex justify-content-center my-3"><h4 className="text-danger parpadea m-2 fw-lighter">{errorBBDD}</h4></div>
@@ -211,15 +229,15 @@ function App() {
     )
   }
 
-  // ANTIGUO COMPONENTE CUERPO ******************************* 4. CREACION DE COMPONENTES ******************************************************
+ // **************************** 4. CREACION DE COMPONENTES ******************************************************
   return (
     <div className="container-md p-5">
       <div className='container p-0 m-0 d-flex flex-column bg-light shadow'>
+  
+        {/* 4.1. COMPONENTE Titulo *********************/}
+        <header className='d-flex justify-content-center'><h1 className='fw-lighter'>todos</h1></header>
 
-        {/* 4.1. COMPONENTE TITULO *********************/}
-        <header className='d-flex justify-content-center'><h1 className='fw-lighter'>todos{errores}</h1></header>
-
-        {/* 4.2. FORMULARIO CREAR NUEVA TAREA **********/}
+        {/* 4.2. COMPONENTE FORMULARIO CREAR NUEVA TAREA **********/}
         <section className='d-flex justify-content-center mx-2 '>
           <form onSubmit={handleSubmit(addTareaBBDD)} >
             <div className="input-group input-group-sm">
@@ -237,27 +255,24 @@ function App() {
             {errors.label && <span className="text-danger text-small d-block m-2 fw-lighter">El campo no puede estar vacío</span>}
           </form>
         </section>
-       {/* 3.2.1 COMPONENTE - BORRAR TODAS LAS TAREAS ******************/}
-        <div className="d-flex justify-content-center my-3">
-          <button type="button" className="btn btn-danger text-nowrap" onClick={() => btnBorraTODAS()}>Borrar todas las tareas</button>
-        </div>
-        {/* 3.2.2 COMPONENTE - DATOS DEL ARRAY TAREAS *********/}
-        <section className="d-flex justify-content-center flex-column mb-3">
-          {
-            // 3.2.2.1 recorro el array de datos TAREAS para mostrarlo cuando se modifica
-            TAREAS.map((tarea) =>
-              <div className="p-3 d-flex align-items-center justify-content-between border-bottom border-2" key={tarea.id}  >
-                <h5 className='p-0 m-0 fw-lighter'>Tarea:  {tarea.label}</h5>
-                <div>{botoneraHechoPendienteBorrar(tarea)}</div>
-              </div>
-            )
-          }
-        </section>
-        {/* 3.2.3 ITEMS LEFT con length del array de objetos TAREAS ******************************/}
-        <footer className='container ps-4'><p className='fw-lighter'>{TAREAS.length} items left</p></footer>
+        <GridLoader
+        color={"#36d7b7"}
+        loading={loading}
+        cssOverride={spinnerCSS}
+        size={15}
+        aria-label="Loading Spinner"
+        data-testid="loader"
+      />
+        {/* 4.3. COMPONENTE MostrarTareas CREAR NUEVA TAREA => addTareaBBDD **********/}
+        { (TAREAS.length === 0) ? noHayDatos() : siHayDatos() }
+
+
       </div>
     </div>
   );
+
 }
+
+
 
 export default App;
